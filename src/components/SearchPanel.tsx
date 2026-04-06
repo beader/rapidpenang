@@ -11,6 +11,7 @@ export default function SearchPanel({ routes, onSelect, selectedRoute }: Props) 
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return routes;
@@ -22,46 +23,56 @@ export default function SearchPanel({ routes, onSelect, selectedRoute }: Props) 
     );
   }, [routes, query]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click/touch
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: MouseEvent | TouchEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
   }, []);
 
   return (
     <div ref={panelRef} className="relative">
-      <input
-        type="text"
-        placeholder="Search route..."
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-      />
-      {selectedRoute && !open && (
-        <div className="mt-2 px-3 py-2 bg-blue-50 rounded-md text-sm text-blue-800 flex items-center justify-between">
-          <span className="font-semibold">{selectedRoute.shortName}</span>
-          <button
-            onClick={() => {
-              onSelect(null as unknown as RouteSummary);
-              setQuery("");
-            }}
-            className="text-blue-500 hover:text-blue-700 text-xs ml-2"
-          >
-            Clear
-          </button>
-        </div>
+      {selectedRoute && !open ? (
+        <button
+          onClick={() => {
+            setOpen(true);
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+          className="w-full px-4 py-3 rounded-xl bg-white shadow-md border border-gray-200 text-left flex items-center justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-blue-700">{selectedRoute.shortName}</span>
+            <span className="text-gray-500 text-xs truncate max-w-[180px]">
+              {selectedRoute.directions.map((d) => d.headsign).join(" / ")}
+            </span>
+          </div>
+          <span className="text-gray-400 text-xs">Change</span>
+        </button>
+      ) : (
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="search"
+          placeholder="Search route (e.g. 101, 401)..."
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-base"
+        />
       )}
       {open && filtered.length > 0 && (
-        <ul className="absolute z-[1000] mt-1 w-full max-h-64 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+        <ul className="absolute z-[1000] mt-1 w-full max-h-72 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-lg overscroll-contain">
           {filtered.map((r) => (
             <li
               key={r.routeId}
@@ -69,12 +80,13 @@ export default function SearchPanel({ routes, onSelect, selectedRoute }: Props) 
                 onSelect(r);
                 setQuery("");
                 setOpen(false);
+                inputRef.current?.blur();
               }}
-              className={`px-4 py-3 cursor-pointer hover:bg-blue-50 border-b border-gray-100 last:border-b-0 ${
+              className={`px-4 py-3.5 cursor-pointer active:bg-blue-50 border-b border-gray-100 last:border-b-0 ${
                 selectedRoute?.routeId === r.routeId ? "bg-blue-50" : ""
               }`}
             >
-              <span className="font-semibold text-blue-700 mr-2">
+              <span className="font-semibold text-blue-700 mr-2 text-base">
                 {r.shortName}
               </span>
               <span className="text-gray-500 text-xs">
