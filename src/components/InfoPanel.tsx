@@ -47,6 +47,36 @@ export default function InfoPanel({
         onChange={onDirectionChange}
       />
 
+      {detail?.firstDeparture && detail?.lastDeparture && (
+        <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase text-gray-400 font-semibold tracking-wide">
+              First
+            </span>
+            <span className="text-sm font-semibold text-gray-800 tabular-nums">
+              {detail.firstDeparture}
+            </span>
+          </div>
+          <div className="flex-1 h-px bg-gray-200 mx-2" />
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] uppercase text-gray-400 font-semibold tracking-wide">
+              Last
+            </span>
+            <span className="text-sm font-semibold text-gray-800 tabular-nums">
+              {detail.lastDeparture}
+            </span>
+          </div>
+          <div className="flex flex-col items-end ml-3 pl-3 border-l border-gray-200">
+            <span className="text-[10px] uppercase text-gray-400 font-semibold tracking-wide">
+              Trips
+            </span>
+            <span className="text-sm font-semibold text-gray-800 tabular-nums">
+              {detail.tripCount}
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between text-xs text-gray-500">
         <span>
           <strong className="text-gray-700">{vehicles.length}</strong> buses online

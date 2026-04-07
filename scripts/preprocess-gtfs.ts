@@ -54,6 +54,20 @@ function roundCoord(v: number): number {
   return Math.round(v * 100000) / 100000;
 }
 
+// GTFS times may exceed 24:00:00 for trips running past midnight.
+// Parse to total minutes for comparison; format back as HH:MM.
+function parseTimeToMinutes(t: string): number | null {
+  const m = /^(\d+):(\d+):(\d+)$/.exec(t);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+function formatMinutes(mins: number): string {
+  const h = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function naturalSort(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
@@ -150,9 +164,15 @@ async function main() {
   for (const route of routesRaw) {
     const directions: { directionId: number; headsign: string }[] = [];
 
+    // Collect trip_ids per direction for this route (used for RT filtering)
+    const tripIdsByDir: Record<number, string[]> = { 0: [], 1: [] };
     for (const dirId of [0, 1]) {
-      const key = `${route.route_id}_${dirId}`;
-      const trips = tripsByRouteDir.get(key);
+      const trips = tripsByRouteDir.get(`${route.route_id}_${dirId}`) || [];
+      tripIdsByDir[dirId] = trips.map((t) => t.trip_id);
+    }
+
+    for (const dirId of [0, 1]) {
+      const trips = tripsByRouteDir.get(`${route.route_id}_${dirId}`);
       if (!trips || trips.length === 0) continue;
 
       // Pick a representative trip (first one)
@@ -182,6 +202,23 @@ async function main() {
         roundCoord(Number(sp.shape_pt_lon)),
       ]);
 
+      // Compute first/last departure across all trips in this direction
+      // (from each trip's first stop's departure_time)
+      const startMinutes: number[] = [];
+      for (const t of trips) {
+        const sts = stopTimesMap.get(t.trip_id);
+        if (!sts || sts.length === 0) continue;
+        const m = parseTimeToMinutes(sts[0].departure_time);
+        if (m !== null) startMinutes.push(m);
+      }
+      let firstDeparture: string | null = null;
+      let lastDeparture: string | null = null;
+      if (startMinutes.length > 0) {
+        firstDeparture = formatMinutes(Math.min(...startMinutes));
+        lastDeparture = formatMinutes(Math.max(...startMinutes));
+      }
+
+      const otherDir = dirId === 0 ? 1 : 0;
       const routeDetail = {
         routeId: route.route_id,
         shortName: route.route_short_name,
@@ -189,6 +226,11 @@ async function main() {
         headsign,
         stops,
         shape,
+        tripIds: tripIdsByDir[dirId],
+        oppositeTripIds: tripIdsByDir[otherDir],
+        firstDeparture,
+        lastDeparture,
+        tripCount: startMinutes.length,
       };
 
       const detailPath = path.join(

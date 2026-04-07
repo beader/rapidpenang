@@ -4,7 +4,7 @@ import { fetchVehiclePositions } from "../services/gtfsRealtime";
 
 const POLL_INTERVAL = 15_000;
 
-export function useVehiclePositions(activeRouteShortName: string | null, directionId: number | null = null) {
+export function useVehiclePositions(activeRouteShortName: string | null) {
   const [vehicles, setVehicles] = useState<VehiclePosition[]>([]);
   const [allVehicles, setAllVehicles] = useState<VehiclePosition[]>([]);
   const [lastUpdate, setLastUpdate] = useState<number | null>(null);
@@ -25,20 +25,16 @@ export function useVehiclePositions(activeRouteShortName: string | null, directi
     }
   }, []);
 
-  // Filter vehicles when route/direction changes or allVehicles update
+  // Filter vehicles by route (direction filtering happens in App via trip_id lookup)
   useEffect(() => {
     if (!activeRouteShortName) {
       setVehicles([]);
       return;
     }
     setVehicles(
-      allVehicles.filter(
-        (v) =>
-          v.routeShortName === activeRouteShortName &&
-          (directionId === null || v.directionId === directionId)
-      )
+      allVehicles.filter((v) => v.routeShortName === activeRouteShortName)
     );
-  }, [allVehicles, activeRouteShortName, directionId]);
+  }, [allVehicles, activeRouteShortName]);
 
   // Polling lifecycle
   useEffect(() => {

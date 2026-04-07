@@ -21,6 +21,11 @@ export interface RouteDetail {
     sequence: number;
   }[];
   shape: [number, number][];
+  tripIds: string[];
+  oppositeTripIds: string[];
+  firstDeparture: string | null;
+  lastDeparture: string | null;
+  tripCount: number;
 }
 
 export interface VehiclePosition {

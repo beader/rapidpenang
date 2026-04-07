@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import SearchPanel from "./components/SearchPanel";
 import MapView from "./components/MapView";
 import InfoPanel from "./components/InfoPanel";
@@ -24,10 +24,23 @@ export default function App() {
     selectedRoute?.routeId ?? null,
     directionId
   );
-  const { vehicles, lastUpdate, error, countdown } = useVehiclePositions(
-    selectedRoute?.shortName ?? null,
-    directionId
-  );
+  const { vehicles: routeVehicles, lastUpdate, error, countdown } =
+    useVehiclePositions(selectedRoute?.shortName ?? null);
+
+  // Filter vehicles by direction using trip_id mapping from static data.
+  // Feed's direction_id is unreliable for Rapid Penang, so we look up trip_id
+  // against the preprocessed direction/opposite-direction trip sets.
+  const vehicles = useMemo(() => {
+    if (!detail) return routeVehicles;
+    const currentSet = new Set(detail.tripIds);
+    const oppositeSet = new Set(detail.oppositeTripIds);
+    return routeVehicles.filter((v) => {
+      if (currentSet.has(v.tripId)) return true;
+      if (oppositeSet.has(v.tripId)) return false;
+      // Unmatched trip_id (~33% of RT data) → show in both directions as best effort
+      return true;
+    });
+  }, [routeVehicles, detail]);
 
   const handleSelectRoute = useCallback((route: RouteSummary | null) => {
     setSelectedRoute(route);
